@@ -6,6 +6,7 @@ import (
 
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
 type int64Inst struct {
@@ -13,11 +14,11 @@ type int64Inst struct {
 	embedded.Int64UpDownCounter
 	embedded.Int64Histogram
 
-	name    string
-	meter   *meter
-	unit    string
-	desc    string
-	isGauge bool
+	name  string
+	meter *meter
+	unit  string
+	desc  string
+	kind  sdkmetric.InstrumentKind
 }
 
 func (i *int64Inst) Add(_ context.Context, incr int64, options ...otelmetric.AddOption) {
@@ -25,7 +26,7 @@ func (i *int64Inst) Add(_ context.Context, incr int64, options ...otelmetric.Add
 	tags := attrsToTags(c.Attributes(), i.meter.res.Attributes())
 
 	var err error
-	if i.isGauge {
+	if i.kind == sdkmetric.InstrumentKindUpDownCounter {
 		err = i.meter.client.Gauge(i.name, float64(incr), tags, 1)
 	} else {
 		err = i.meter.client.Count(i.name, incr, tags, 1)
@@ -48,11 +49,11 @@ type float64Inst struct {
 	embedded.Float64UpDownCounter
 	embedded.Float64Histogram
 
-	name    string
-	meter   *meter
-	unit    string
-	desc    string
-	isGauge bool
+	name  string
+	meter *meter
+	unit  string
+	desc  string
+	kind  sdkmetric.InstrumentKind
 }
 
 func (i *float64Inst) Add(_ context.Context, incr float64, options ...otelmetric.AddOption) {
@@ -60,7 +61,7 @@ func (i *float64Inst) Add(_ context.Context, incr float64, options ...otelmetric
 	tags := attrsToTags(c.Attributes(), i.meter.res.Attributes())
 
 	var err error
-	if i.isGauge {
+	if i.kind == sdkmetric.InstrumentKindUpDownCounter {
 		err = i.meter.client.Gauge(i.name, incr, tags, 1)
 	} else {
 		atomic.AddUint64(&i.meter.client.telemetry.totalMetricsCount, 1)
@@ -82,5 +83,6 @@ func (i *float64Inst) Record(_ context.Context, value float64, options ...otelme
 	}
 }
 
-type observable[T int64 | float64] struct {
+type observable[T int64 | float64] interface {
+	Collect(context.Context) T
 }
