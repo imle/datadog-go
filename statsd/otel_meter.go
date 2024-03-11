@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -108,8 +109,13 @@ func (m *meter) Int64Histogram(name string, options ...otelmetric.Int64Histogram
 	})
 }
 
+var (
+	errPrecisionLoss = errors.New("warning: float counters are converted to int and will lose precision")
+)
+
 func (m *meter) Float64Counter(name string, options ...otelmetric.Float64CounterOption) (otelmetric.Float64Counter, error) {
 	cfg := otelmetric.NewFloat64CounterConfig(options...)
+	m.errHandler(errPrecisionLoss)
 	if err := validateInstrumentName(name); err != nil {
 		return nil, err
 	}
@@ -129,6 +135,7 @@ func (m *meter) Float64Counter(name string, options ...otelmetric.Float64Counter
 
 func (m *meter) Float64UpDownCounter(name string, options ...otelmetric.Float64UpDownCounterOption) (otelmetric.Float64UpDownCounter, error) {
 	cfg := otelmetric.NewFloat64UpDownCounterConfig(options...)
+	m.errHandler(errPrecisionLoss)
 	if err := validateInstrumentName(name); err != nil {
 		return nil, err
 	}
@@ -203,6 +210,7 @@ func (m *meter) Int64ObservableGauge(name string, options ...otelmetric.Int64Obs
 
 func (m *meter) Float64ObservableCounter(name string, options ...otelmetric.Float64ObservableCounterOption) (otelmetric.Float64ObservableCounter, error) {
 	cfg := otelmetric.NewFloat64ObservableCounterConfig(options...)
+	m.errHandler(errPrecisionLoss)
 	id := sdkmetric.Instrument{
 		Name:        name,
 		Description: cfg.Description(),
@@ -215,6 +223,7 @@ func (m *meter) Float64ObservableCounter(name string, options ...otelmetric.Floa
 
 func (m *meter) Float64ObservableUpDownCounter(name string, options ...otelmetric.Float64ObservableUpDownCounterOption) (otelmetric.Float64ObservableUpDownCounter, error) {
 	cfg := otelmetric.NewFloat64ObservableUpDownCounterConfig(options...)
+	m.errHandler(errPrecisionLoss)
 	id := sdkmetric.Instrument{
 		Name:        name,
 		Description: cfg.Description(),
